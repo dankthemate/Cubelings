@@ -1,23 +1,46 @@
 class_name RBCharacter
 extends NetworkRigidBody3D
 
-@export_range(0, 30, 1) var walk_speed := 5.0
-@export_range(0, 30, 1) var jump_power := 8.0
+#region Constants
 
+const WALKSPEED := 8
+const JUMPPOWER := 3
+
+#endregion
+#region Public Variables
+
+var velocity := Vector3.ZERO
+
+#endregion
+#region Private Variables
 var _actually_on_floor := false
 
 var _DEFAULT_PHYS_MATERIAL := PhysicsMaterial.new()
 var _floor_phys_material : PhysicsMaterial
 
-var velocity := Vector3.ZERO
-var jumping := false
-
-func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
-	_check_contacts(state)
+#endregion
+#region getters/setters
 
 ## returns true if character is on floor
 func is_on_floor() -> bool:
 	return _actually_on_floor
+
+#endregion
+#region Private Functions
+
+## move the character
+func _move(delta: float) -> void:
+	var buffer = delta * 10
+	
+	var friction = 1.0 if not _floor_phys_material else _floor_phys_material.friction
+	
+	var correction = velocity - (linear_velocity * friction)
+	correction *= buffer
+	correction *= Vector3(1,0,1)
+	velocity = correction
+	velocity *= NetworkTime.physics_factor
+	
+	apply_central_impulse(velocity)
 
 ## checks contacts to see if character is on floor
 func _check_contacts(state: PhysicsDirectBodyState3D) -> void:
@@ -38,29 +61,16 @@ func _check_contacts(state: PhysicsDirectBodyState3D) -> void:
 			else:
 				_floor_phys_material = _DEFAULT_PHYS_MATERIAL
 
-## move the character
-func _move(delta: float) -> void:
-	var buffer = delta * 10
-	
-	var friction = 1.0 if not _floor_phys_material else _floor_phys_material.friction
-	
-	var correction = velocity - (linear_velocity * friction)
-	correction *= buffer
-	correction *= Vector3(1,0,1)
-	velocity = correction
-	
-	if jumping and is_on_floor():
-		velocity.y = jump_power
-	
-	apply_central_impulse(velocity)
+#endregion
+#region Processes
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	_check_contacts(state)
+
+func _physics_rollback_tick(_delta, _tick):
+	_physics_process(_delta)
 
 func _physics_process(delta: float) -> void:
-	temp_input()
 	_move(delta)
-
-func temp_input() -> void:
-	var move_direction = Input.get_vector(&"MoveLeft",&"MoveRight",&"MoveForward",&"MoveBack")
-	jumping = Input.is_action_just_pressed(&"Jump")
 	
-	velocity.x = move_direction.x * walk_speed
-	velocity.z = move_direction.y * walk_speed
+#endregion
