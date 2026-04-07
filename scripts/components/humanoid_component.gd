@@ -68,8 +68,8 @@ func _set_max_health(value: float) -> void:
 	max_health = value
 	_set_health(health)
 
-func get_root() -> RBCharacter:
-	return root_node as RBCharacter
+func get_root_node() -> RBCharacter:
+	return _root_node as RBCharacter
 
 #endregion
 #region Finite State Machine
@@ -99,8 +99,7 @@ func _on_process(delta: float) -> void:
 			pass
 		RAGDOLLING:
 			pass
-
-func _on_physics_process(delta: float) -> void:
+	
 	match state:
 		IDLE, MOVING:
 			_jump_logic()
@@ -112,7 +111,7 @@ func _transition_logic() -> void:
 	match state:
 		IDLE:
 			# transition to falling
-			if not get_root().is_on_floor():
+			if not get_root_node().is_on_floor():
 				return change_state(FALLING)
 			
 			# transition to moving
@@ -120,7 +119,7 @@ func _transition_logic() -> void:
 				return change_state(MOVING)
 		FALLING:
 			# grounded
-			if get_root().is_on_floor():
+			if get_root_node().is_on_floor():
 				# transition to moving
 				if move_direction.length() > 0:
 					return change_state(IDLE)
@@ -130,7 +129,7 @@ func _transition_logic() -> void:
 					return change_state(MOVING)
 		MOVING:
 			# transition to falling
-			if not get_root().is_on_floor():
+			if not get_root_node().is_on_floor():
 				return change_state(FALLING)
 			
 			# transition to idle
@@ -143,7 +142,6 @@ func _transition_logic() -> void:
 
 func change_state(new : HUMANOID_STATES) -> void:
 	old_state = state
-	assert(new is HUMANOID_STATES, "Could not change state. One inputted is invalid.")
 	state = new
 	
 	state_changed.emit(state, old_state)
@@ -158,7 +156,7 @@ func _jump_logic() -> void:
 		return
 	
 	if jumping:
-		get_root().apply_central_impulse(Vector3.UP * jump_power)
+		get_root_node().apply_central_impulse(Vector3.UP * jump_power)
 
 # handles movement
 func _move_logic() -> void:
@@ -167,7 +165,7 @@ func _move_logic() -> void:
 	
 	var wish = Vector3(move_direction.x, 0, move_direction.y)
 	wish *= walk_speed
-	get_root().velocity = wish
+	get_root_node().velocity = wish
 
 #endregion
 #region Processors
@@ -175,9 +173,6 @@ func _move_logic() -> void:
 func _process(delta: float) -> void:
 	_on_process(delta)
 	_transition_logic()
-
-func _physics_process(delta: float) -> void:
-	_on_physics_process(delta)
 
 func _ready() -> void:
 	change_state(INITIAL_STATE)
